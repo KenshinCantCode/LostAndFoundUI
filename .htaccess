@@ -1,0 +1,25 @@
+RewriteEngine On
+
+# Redirect to index.php for cleaner URLs (optional)
+# RewriteRule ^item/([0-9]+)/?$ item.php?id=$1 [L,QSA]
+
+# Prevent directory listing
+Options -Indexes
+
+# Protect sensitive files
+<FilesMatch "^(config\.php|database\.php)">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block access to hidden files
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block access to .sql files
+<FilesMatch "\.(sql|md|log)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
