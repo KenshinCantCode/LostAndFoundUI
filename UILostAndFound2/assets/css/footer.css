@@ -1,0 +1,14 @@
+
+footer,
+footer .text-muted,
+footer a {
+    color: #fff !important;
+}
+
+footer a:hover {
+    color: #31bbf1 !important;
+}
+
+footer {
+    background-color: #212529;
+}
