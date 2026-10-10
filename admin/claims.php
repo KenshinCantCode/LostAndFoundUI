@@ -87,6 +87,7 @@ $stmt->execute($params);
 $claims = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $pageTitle = "Manage Claims";
+$isAdminPage = true;
 require_once __DIR__ . '/../includes/header.php';
 ?>
 

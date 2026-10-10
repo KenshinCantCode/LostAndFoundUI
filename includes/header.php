@@ -12,95 +12,166 @@ $flash = getFlash();
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= isset($pageTitle) ? sanitize($pageTitle) . ' - ' : '' ?><?= SITE_NAME ?></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+        (function () {
+            let savedTheme = null;
+            try {
+                savedTheme = localStorage.getItem('ui-theme');
+            } catch (error) {
+                savedTheme = null;
+            }
+            const prefersDark = window.matchMedia
+                ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                : false;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { ink: '#173b2f', coral: '#4f8f6c', mint: '#2f7658', paper: '#f5f8f5' },
+                    fontFamily: { sans: ['DM Sans', 'ui-sans-serif', 'system-ui'], display: ['Space Grotesk', 'ui-sans-serif', 'system-ui'] }
+                }
+            }
+        };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+        rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="<?= SITE_URL ?>/assets/css/style.css" rel="stylesheet">
-    <link href="<?= SITE_URL ?>/assets/css/footer.css" rel="stylesheet">
+    <link href="<?= SITE_URL ?>/assets/css/style.css?v=20261010-11" rel="stylesheet">
+    <link href="<?= SITE_URL ?>/assets/css/footer.css?v=20260907" rel="stylesheet">
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="<?= SITE_URL ?>">
-                <i class="fas fa-search-location me-2"></i><?= SITE_NAME ?>
+
+<body class="bg-paper text-ink antialiased" data-site-url="<?= SITE_URL ?>">
+    <nav class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+        <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4 lg:px-8">
+            <a class="font-display flex items-center gap-3 text-lg font-bold tracking-tight text-ink"
+                href="<?= SITE_URL ?>">
+                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-ink text-coral shadow-sm"><i
+                        class="fas fa-search-location"></i></span>
+                <span class="truncate text-xl sm:text-2xl"><?= SITE_NAME ?></span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= SITE_URL ?>"><i class="fas fa-home me-1"></i>Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= SITE_URL ?>/search.php"><i class="fas fa-search me-1"></i>Search</a>
-                    </li>
+            <div class="flex items-center gap-2 lg:hidden">
+                <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode"
+                    title="Switch to dark mode">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                </button>
+                <button class="rounded-lg p-2 text-ink" type="button" aria-label="Toggle navigation"
+                    data-nav-toggle>
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <div class="hidden items-center gap-8 lg:flex" data-nav-menu>
+                <div class="flex items-center gap-6 text-sm font-semibold text-slate-600">
+                    <a class="transition hover:text-coral" href="<?= SITE_URL ?>"><i
+                            class="fas fa-home mr-1 text-xs"></i>Home</a>
+                    <a class="transition hover:text-coral" href="<?= SITE_URL ?>/search.php"><i
+                            class="fas fa-search mr-1 text-xs"></i>Search</a>
+                    <?php if ($auth->isLoggedIn()): ?><a class="transition hover:text-coral"
+                                href="<?= SITE_URL ?>/friends.php"><i class="fas fa-user-group mr-1 text-xs"></i>People</a><?php endif; ?>
+                    <?php if ($auth->isLoggedIn()): ?><a class="transition hover:text-coral"
+                                href="<?= SITE_URL ?>/report-lost.php"><i class="fas fa-plus-circle mr-1 text-xs"></i>Report
+                            Lost</a><?php endif; ?>
+                </div>
+                <div class="flex items-center gap-3">
                     <?php if ($auth->isLoggedIn()): ?>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                            <i class="fas fa-plus-circle me-1"></i>Report
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="<?= SITE_URL ?>/report-lost.php"><i class="fas fa-frown me-2 text-danger"></i>Lost Item</a></li>
-                            <li><a class="dropdown-item" href="<?= SITE_URL ?>/report-found.php"><i class="fas fa-smile me-2 text-success"></i>Found Item</a></li>
-                        </ul>
-                    </li>
-                    <?php endif; ?>
-                </ul>
-                <ul class="navbar-nav">
-                    <?php if ($auth->isLoggedIn()): ?>
-                        <li class="nav-item">
-                            <a class="nav-link position-relative" href="<?= SITE_URL ?>/notifications.php">
-                                <i class="fas fa-bell"></i>
-                                <?php if ($unreadCount > 0): ?>
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                    <?= $unreadCount > 9 ? '9+' : $unreadCount ?>
-                                </span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                                <i class="fas fa-user-circle me-1"></i><?= sanitize($_SESSION['full_name']) ?>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><span class="dropdown-item-text text-muted small">Signed in as <strong><?= sanitize($_SESSION['username']) ?></strong></span></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="<?= SITE_URL ?>/dashboard.php"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
-                                <li><a class="dropdown-item" href="<?= SITE_URL ?>/my-reports.php"><i class="fas fa-list me-2"></i>My Reports</a></li>
-                                <li><a class="dropdown-item" href="<?= SITE_URL ?>/my-claims.php"><i class="fas fa-hand-paper me-2"></i>My Claims</a></li>
-                                <li><a class="dropdown-item" href="<?= SITE_URL ?>/profile.php"><i class="fas fa-cog me-2"></i>Profile</a></li>
-                                <?php if ($auth->isAdmin()): ?>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="<?= SITE_URL ?>/admin/"><i class="fas fa-shield-alt me-2"></i>Admin Panel</a></li>
-                                <?php endif; ?>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-danger" href="<?= SITE_URL ?>/logout.php"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
-                            </ul>
-                        </li>
+                        <a class="relative rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-coral"
+                            href="<?= SITE_URL ?>/notifications.php" aria-label="Notifications"><i
+                                class="fas fa-bell"></i><?php if ($unreadCount > 0): ?><span
+                                    class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1 text-[10px] font-bold text-white"><?= $unreadCount > 9 ? '9+' : $unreadCount ?></span><?php endif; ?></a>
+                        <button class="theme-toggle hidden lg:inline-flex" type="button" data-theme-toggle
+                            aria-label="Switch to dark mode" title="Switch to dark mode">
+                            <i class="fas fa-moon" aria-hidden="true"></i>
+                        </button>
+                        <div class="relative">
+                            <button
+                                class="flex items-center gap-2 rounded-full border border-slate-200 bg-white py-1.5 pl-1.5 pr-3 text-sm font-semibold text-slate-700 shadow-sm"
+                                type="button" data-menu-toggle="user-menu" aria-controls="user-menu"
+                                aria-expanded="false"><span
+                                    class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-mint text-sm text-white"><?php if (!empty($currentUser['avatar']) && $currentUser['avatar'] !== 'default.png'): ?><img
+                                            src="<?= SITE_URL ?>/uploads/avatars/<?= rawurlencode(basename($currentUser['avatar'])) ?>"
+                                            alt="" class="h-full w-full object-cover"><?php else: ?><i
+                                            class="fas fa-user"></i><?php endif; ?></span><span
+                                    class="max-w-[10rem] truncate"><?= sanitize($_SESSION['full_name']) ?></span><i
+                                    class="fas fa-chevron-down text-[10px] text-slate-400"></i></button>
+                            <div id="user-menu"
+                                class="absolute right-0 mt-2 hidden w-56 rounded-xl border border-slate-200 bg-white p-2 text-sm shadow-xl">
+                                <p class="border-b border-slate-100 px-3 pb-2 text-xs text-slate-400">Signed in as <strong
+                                        class="text-slate-600"><?= sanitize($_SESSION['username']) ?></strong></p><a
+                                    class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50"
+                                    href="<?= SITE_URL ?>/dashboard.php">Dashboard</a><a
+                                    class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50"
+                                    href="<?= SITE_URL ?>/my-reports.php">My Reports</a><a
+                                    class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50"
+                                    href="<?= SITE_URL ?>/my-claims.php">My Claims</a><a
+                                    class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50"
+                                    href="<?= SITE_URL ?>/profile.php">Profile</a><?php if ($auth->isAdmin()): ?><a
+                                        class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50"
+                                        href="<?= SITE_URL ?>/admin/">Admin Panel</a><?php endif; ?><a
+                                    class="mt-1 block rounded-lg px-3 py-2 text-coral hover:bg-red-50"
+                                    href="<?= SITE_URL ?>/logout.php">Logout</a>
+                            </div>
+                        </div>
                     <?php else: ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="<?= SITE_URL ?>/login.php"><i class="fas fa-sign-in-alt me-1"></i>Login</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="<?= SITE_URL ?>/register.php"><i class="fas fa-user-plus me-1"></i>Register</a>
-                        </li>
+                        <button class="theme-toggle hidden lg:inline-flex" type="button" data-theme-toggle
+                            aria-label="Switch to dark mode" title="Switch to dark mode">
+                            <i class="fas fa-moon" aria-hidden="true"></i>
+                        </button>
+                        <a class="text-sm font-semibold text-slate-600 hover:text-coral"
+                            href="<?= SITE_URL ?>/login.php">Login</a><a
+                            class="rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-slate-700"
+                            href="<?= SITE_URL ?>/register.php">Register</a>
                     <?php endif; ?>
-                </ul>
+                </div>
+            </div>
+            <div class="absolute left-0 right-0 top-full hidden border-b border-slate-200 bg-white p-5 shadow-lg lg:hidden"
+                data-nav-mobile>
+                <div class="space-y-2">
+                    <a class="block py-2 font-semibold text-slate-700" href="<?= SITE_URL ?>">Home</a>
+                    <a class="block py-2 font-semibold text-slate-700" href="<?= SITE_URL ?>/search.php">Search</a>
+                    <?php if ($auth->isLoggedIn()): ?>
+                    <a class="block py-2 font-semibold text-slate-700" href="<?= SITE_URL ?>/friends.php">People &amp; Messages</a>
+                    <a class="block py-2 font-semibold text-slate-700"
+                            href="<?= SITE_URL ?>/dashboard.php">Dashboard</a>
+                        <a class="block py-2 font-semibold text-slate-700" href="<?= SITE_URL ?>/my-reports.php">My
+                            Reports</a>
+                        <a class="block py-2 font-semibold text-slate-700" href="<?= SITE_URL ?>/my-claims.php">My
+                            Claims</a>
+                        <a class="block py-2 font-semibold text-slate-700" href="<?= SITE_URL ?>/profile.php">Profile</a>
+                        <a class="block py-2 font-semibold text-slate-700" href="<?= SITE_URL ?>/report-lost.php">Report
+                            Lost</a>
+                        <a class="mt-2 block rounded-lg bg-ink px-4 py-2 text-center font-bold text-white"
+                            href="<?= SITE_URL ?>/logout.php">Logout</a>
+                    <?php else: ?>
+                        <a class="mt-2 block rounded-lg bg-ink px-4 py-2 text-center font-bold text-white"
+                            href="<?= SITE_URL ?>/register.php">Register</a>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </nav>
 
     <?php if ($flash): ?>
-    <div class="container mt-3">
-        <div class="alert alert-<?= $flash['type'] ?> alert-dismissible fade show" role="alert">
-            <?= $flash['message'] ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="mx-auto mt-4 max-w-7xl px-5 lg:px-8">
+            <div class="alert alert-<?= $flash['type'] ?> flex items-center justify-between" role="alert">
+                <?= $flash['message'] ?>
+                <button type="button" class="ml-4 rounded-lg px-2 py-1 text-current opacity-60 hover:opacity-100"
+                    data-dismiss="alert" aria-label="Dismiss">&times;</button>
+            </div>
         </div>
-    </div>
     <?php endif; ?>
 
-    <main class="container py-4">
+    <main
+        class="mx-auto min-h-[calc(100vh-180px)] max-w-7xl px-5 py-8 lg:px-8<?= !empty($isAdminPage) ? ' admin-page' : '' ?>">

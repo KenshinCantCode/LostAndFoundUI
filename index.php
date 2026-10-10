@@ -11,7 +11,7 @@ $stmt = $conn->query("
     FROM items i 
     LEFT JOIN categories c ON i.category_id = c.id
     LEFT JOIN users u ON i.user_id = u.id
-    WHERE i.status = 'open' AND i.is_resolved = 0
+    WHERE i.status = 'open' AND i.is_resolved = 0 AND i.approval_status = 'approved'
     ORDER BY i.created_at DESC 
     LIMIT 9
 ");
@@ -19,9 +19,9 @@ $recent_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get stats
 $stats = [];
-$stats['lost'] = $conn->query("SELECT COUNT(*) FROM items WHERE type='lost' AND status='open' AND is_resolved = 0")->fetchColumn();
-$stats['found'] = $conn->query("SELECT COUNT(*) FROM items WHERE type='found' AND status='open' AND is_resolved = 0")->fetchColumn();
-$stats['returned'] = $conn->query("SELECT COUNT(*) FROM items WHERE status='returned'")->fetchColumn();
+$stats['lost'] = $conn->query("SELECT COUNT(*) FROM items WHERE type='lost' AND status='open' AND is_resolved = 0 AND approval_status = 'approved'")->fetchColumn();
+$stats['found'] = $conn->query("SELECT COUNT(*) FROM items WHERE type='found' AND status='open' AND is_resolved = 0 AND approval_status = 'approved'")->fetchColumn();
+$stats['returned'] = $conn->query("SELECT COUNT(*) FROM items WHERE status='returned' AND approval_status = 'approved'")->fetchColumn();
 $stats['users'] = $conn->query("SELECT COUNT(*) FROM users")->fetchColumn();
 
 $pageTitle = "Home";
@@ -29,37 +29,45 @@ require_once 'includes/header.php';
 ?>
 
 <!-- main Section -->
-<div class="main-section bg-primary text-white rounded-4 p-5 mb-5 shadow">
-    <div class="row align-items-center">
-        <div class="col-lg-7">
-            <h1 class="display-4 fw-bold mb-3">Lost Something? Find It Here!</h1>
-            <p class="lead mb-4">Help Find Your Lost Items. Report lost or found items and let us help you find a match.</p>
-            <div class="d-flex gap-3 flex-wrap">
+<div
+    class="main-section home-hero relative overflow-hidden rounded-[2rem] bg-ink p-8 text-white shadow-xl sm:p-12 lg:p-16">
+    <div class="grid items-center lg:grid-cols-2">
+        <div>
+            <p class="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-coral">Lost and Found</p>
+            <h1 class="font-display mb-4 text-4xl font-bold leading-tight sm:text-6xl">Lost something? <span
+                    class="text-coral">Find it here.</span></h1>
+            <p class="mb-8 max-w-xl text-lg leading-8 text-slate-300">Report lost or found items, discover possible
+                matches, and help campus belongings make their way home.</p>
+            <div class="flex flex-wrap gap-3">
                 <?php if (isset($_SESSION['user_id'])): ?>
-                <a href="report-lost.php" class="btn btn-light btn-lg">
-                    <i class="fas fa-frown me-2"></i>Report Lost Item
-                </a>
-                <a href="report-found.php" class="btn btn-outline-light btn-lg">
-                    <i class="fas fa-smile me-2"></i>Report Found Item
-                </a>
+                    <a href="report-lost.php"
+                        class="rounded-xl bg-white px-5 py-3 font-bold text-ink shadow-sm transition hover:-translate-y-0.5">
+                        <i class="fas fa-frown mr-2 text-coral"></i>Report Lost Item
+                    </a>
+                    <a href="report-found.php"
+                        class="rounded-xl border border-white/30 px-5 py-3 font-bold text-white transition hover:bg-white/10">
+                        <i class="fas fa-smile mr-2 text-mint"></i>Report Found Item
+                    </a>
                 <?php else: ?>
-                <a href="register.php" class="btn btn-light btn-lg">
-                    <i class="fas fa-user-plus me-2"></i>Get Started
-                </a>
-                <a href="login.php" class="btn btn-outline-light btn-lg">
-                    <i class="fas fa-sign-in-alt me-2"></i>Login
-                </a>
+                    <a href="register.php"
+                        class="rounded-xl bg-white px-5 py-3 font-bold text-ink shadow-sm transition hover:-translate-y-0.5">
+                        <i class="fas fa-user-plus mr-2 text-coral"></i>Get Started
+                    </a>
+                    <a href="login.php"
+                        class="rounded-xl border border-white/30 px-5 py-3 font-bold text-white transition hover:bg-white/10">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Login
+                    </a>
                 <?php endif; ?>
             </div>
         </div>
-        <div class="col-lg-5 text-center d-none d-lg-block">
-            <i class="fas fa-search-location fa-10x opacity-50"></i>
+        <div class="hidden text-center lg:block">
+            <i class="fas fa-search-location text-[10rem] text-white/10"></i>
         </div>
     </div>
 </div>
 
 <!-- Stats -->
-<div class="row mb-5 g-4">
+<div class="row home-stats mb-5 g-4">
     <div class="col-6 col-md-3">
         <div class="card border-danger h-100 text-center shadow-sm">
             <div class="card-body">
@@ -105,7 +113,8 @@ require_once 'includes/header.php';
         <div class="col-md-4">
             <div class="card h-100 border-0 shadow-sm text-center">
                 <div class="card-body">
-                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:80px;height:80px;">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                        style="width:80px;height:80px;">
                         <i class="fas fa-edit fa-2x"></i>
                     </div>
                     <h5>1. Report</h5>
@@ -116,7 +125,8 @@ require_once 'includes/header.php';
         <div class="col-md-4">
             <div class="card h-100 border-0 shadow-sm text-center">
                 <div class="card-body">
-                    <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:80px;height:80px;">
+                    <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                        style="width:80px;height:80px;">
                         <i class="fas fa-search fa-2x"></i>
                     </div>
                     <h5>2. Match</h5>
@@ -127,7 +137,8 @@ require_once 'includes/header.php';
         <div class="col-md-4">
             <div class="card h-100 border-0 shadow-sm text-center">
                 <div class="card-body">
-                    <div class="bg-info text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:80px;height:80px;">
+                    <div class="bg-info text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                        style="width:80px;height:80px;">
                         <i class="fas fa-handshake fa-2x"></i>
                     </div>
                     <h5>3. Return</h5>
@@ -146,52 +157,54 @@ require_once 'includes/header.php';
     </div>
 
     <?php if (empty($recent_items)): ?>
-    <div class="alert alert-info text-center">
-        <i class="fas fa-info-circle me-2"></i>No items reported yet. Be the first to <a href="report-lost.php">report a lost item</a> or <a href="report-found.php">report a found item</a>!
-    </div>
-    <?php else: ?>
-    <div class="row g-4">
-        <?php foreach ($recent_items as $item): ?>
-        <div class="col-md-4">
-            <div class="card h-100 shadow-sm item-card">
-                <div class="position-relative">
-                    <?php if ($item['image']): ?>
-                    <img src="<?= SITE_URL ?>/uploads/items/<?= $item['image'] ?>" 
-                         class="card-img-top" alt="<?= sanitize($item['title']) ?>" 
-                         style="height:200px;object-fit:cover;">
-                    <?php else: ?>
-                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:200px;">
-                        <i class="fas <?= $item['category_icon'] ?? 'fa-tag' ?> fa-4x text-muted"></i>
-                    </div>
-                    <?php endif; ?>
-                    <span class="position-absolute top-0 end-0 m-2 badge <?= $item['type'] === 'lost' ? 'bg-danger' : 'bg-success' ?>">
-                        <?= ucfirst($item['type']) ?>
-                    </span>
-                </div>
-                <div class="card-body">
-                    <div class="mb-2">
-                        <small class="text-muted">
-                            <i class="fas <?= $item['category_icon'] ?? 'fa-tag' ?> me-1"></i>
-                            <?= $item['category_name'] ?? 'Uncategorized' ?>
-                        </small>
-                    </div>
-                    <h5 class="card-title"><?= sanitize($item['title']) ?></h5>
-                    <p class="card-text text-muted small">
-                        <i class="fas fa-map-marker-alt me-1"></i><?= sanitize($item['location'] ?? 'Not specified') ?>
-                    </p>
-                    <p class="card-text text-muted small">
-                        <i class="fas fa-calendar me-1"></i><?= formatDate($item['date_occurred']) ?>
-                    </p>
-                </div>
-                <div class="card-footer bg-white border-0">
-                    <a href="item.php?id=<?= $item['id'] ?>" class="btn btn-outline-primary w-100">
-                        View Details <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
-                </div>
-            </div>
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle me-2"></i>No items reported yet. Be the first to <a href="report-lost.php">report a
+                lost item</a> or <a href="report-found.php">report a found item</a>!
         </div>
-        <?php endforeach; ?>
-    </div>
+    <?php else: ?>
+        <div class="row g-4">
+            <?php foreach ($recent_items as $item): ?>
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm item-card">
+                        <div class="position-relative">
+                            <?php if ($item['image']): ?>
+                                <img src="<?= SITE_URL ?>/uploads/items/<?= $item['image'] ?>" class="card-img-top"
+                                    alt="<?= sanitize($item['title']) ?>" style="height:200px;object-fit:cover;">
+                            <?php else: ?>
+                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+                                    style="height:200px;">
+                                    <i class="fas <?= $item['category_icon'] ?? 'fa-tag' ?> fa-4x text-muted"></i>
+                                </div>
+                            <?php endif; ?>
+                            <span
+                                class="position-absolute top-0 end-0 m-2 badge <?= $item['type'] === 'lost' ? 'bg-danger' : 'bg-success' ?>">
+                                <?= ucfirst($item['type']) ?>
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="fas <?= $item['category_icon'] ?? 'fa-tag' ?> me-1"></i>
+                                    <?= $item['category_name'] ?? 'Uncategorized' ?>
+                                </small>
+                            </div>
+                            <h5 class="card-title"><?= sanitize($item['title']) ?></h5>
+                            <p class="card-text text-muted small">
+                                <i class="fas fa-map-marker-alt me-1"></i><?= sanitize($item['location'] ?? 'Not specified') ?>
+                            </p>
+                            <p class="card-text text-muted small">
+                                <i class="fas fa-calendar me-1"></i><?= formatDate($item['date_occurred']) ?>
+                            </p>
+                        </div>
+                        <div class="card-footer bg-white border-0">
+                            <a href="item.php?id=<?= $item['id'] ?>" class="btn btn-outline-primary w-100">
+                                View Details <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
     <?php endif; ?>
 </div>
 

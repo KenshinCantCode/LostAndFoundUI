@@ -20,7 +20,6 @@ if (!$claim_id || !in_array($action, ['approve', 'reject'])) {
     redirect(SITE_URL . '/my-claims.php');
 }
 
-// Get claim
 $stmt = $conn->prepare("
     SELECT c.*, i.title as item_title, i.user_id as item_owner_id, i.status as item_status,
            u.full_name as claimer_name, u.email as claimer_email
@@ -45,13 +44,9 @@ if ($claim['status'] !== 'pending') {
 $new_status = ($action === 'approve') ? 'approved' : 'rejected';
 $item_status = ($action === 'approve') ? 'returned' : 'open';
 
-// Update claim status
 $conn->prepare("UPDATE claims SET status = ?, updated_at = NOW() WHERE id = ?")->execute([$new_status, $claim_id]);
-
-// Update item status
 $conn->prepare("UPDATE items SET status = ?, updated_at = NOW() WHERE id = ?")->execute([$item_status, $claim['item_id']]);
 
-// If rejected, check for other pending claims
 if ($action === 'reject') {
     $stmt = $conn->prepare("SELECT id FROM claims WHERE item_id = ? AND status = 'pending' AND id != ?");
     $stmt->execute([$claim['item_id'], $claim_id]);
@@ -60,7 +55,6 @@ if ($action === 'reject') {
     }
 }
 
-// Notify claimer
 createNotification(
     $claim['claimer_id'],
     'Claim ' . ucfirst($new_status),
@@ -69,11 +63,11 @@ createNotification(
     SITE_URL . '/item.php?id=' . $claim['item_id']
 );
 
-// Send email
 try {
     $status_text = ($action === 'approve') ? 'approved and the item is ready for pickup' : 'not approved';
     $email_subject = "Your Claim Has Been " . ucfirst($new_status);
     $email_message = "
+
     <!DOCTYPE html>
     <html>
     <head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333;}.container{max-width:600px;margin:0 auto;padding:20px;}.header{background:" . ($action === 'approve' ? '#198754' : '#dc3545') . ";color:white;padding:20px;text-align:center;border-radius:10px 10px 0 0;}.content{background:#f8f9fa;padding:20px;border:1px solid #dee2e6;}.btn{display:inline-block;background:#0d6efd;color:white;padding:12px 24px;text-decoration:none;border-radius:5px;margin:10px 0;}.footer{text-align:center;padding:15px;color:#666;font-size:12px;}</style></head>
@@ -93,7 +87,6 @@ try {
     
     sendEmail($claim['claimer_email'], $email_subject, $email_message);
 } catch (Exception $e) {
-    // Email failed
 }
 
 logActivity($_SESSION['user_id'], 'claim_' . $new_status, "Claim #$claim_id " . $new_status . " for item: {$claim['item_title']}");

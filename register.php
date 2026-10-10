@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
+require_once 'includes/email.php';
 
 $auth = new Auth();
 
@@ -18,7 +19,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $phone = sanitize($_POST['phone'] ?? '');
     $password = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
-    $role = sanitize($_POST['role'] ?? 'student');
 
     // Validation
     if (empty($username) || empty($email) || empty($full_name) || empty($password)) {
@@ -31,21 +31,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Password must be at least 6 characters';
     } elseif ($password !== $confirm_password) {
         $error = 'Passwords do not match';
-    } elseif (!in_array($role, ['student', 'staff'])) {
-        $error = 'Invalid role selected';
     } else {
-        $result = $auth->register($username, $email, $password, $full_name, $role);
+        $result = $auth->register($username, $email, $password, $full_name);
         if ($result['success']) {
-            // Send welcome email (optional)
             try {
-                sendWelcomeEmail($email, $full_name);
-            } catch (Exception $e) {
-                // Log the error but don't prevent registration
-                error_log('Failed to send welcome email: ' . $e->getMessage());
+                $sent = sendEmailVerificationEmail($email, $full_name, $result['verification_token']);
+            } catch (Throwable $e) {
+                error_log('Failed to send verification email: ' . $e->getMessage());
+                $sent = false;
             }
-            
-            setFlash('success', 'Registration successful! Welcome to ' . SITE_NAME . '.');
-            redirect(SITE_URL . '/dashboard.php');
+
+            if (!$sent) {
+                $auth->releaseEmailVerificationCooldown($email, $result['verification_token']);
+                error_log('Verification email could not be sent to newly registered account.');
+                setFlash('warning', 'Your account was created, but we could not send the verification email. Please try resending it.');
+                redirect(SITE_URL . '/resend-verification.php');
+            }
+
+            setFlash('success', 'Account created. Check your email for a verification link before signing in.');
+            redirect(SITE_URL . '/login.php');
         } else {
             $error = $result['message'];
         }
@@ -67,42 +71,33 @@ require_once 'includes/header.php';
                 </div>
 
                 <?php if ($error): ?>
-                <div class="alert alert-danger"><?= $error ?></div>
+                    <div class="alert alert-danger"><?= $error ?></div>
                 <?php endif; ?>
 
                 <form method="POST" action="">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="full_name" class="form-label">Full Name *</label>
-                            <input type="text" class="form-control" id="full_name" name="full_name" 
-                                   value="<?= sanitize($_POST['full_name'] ?? '') ?>" required>
+                            <input type="text" class="form-control" id="full_name" name="full_name"
+                                value="<?= sanitize($_POST['full_name'] ?? '') ?>" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="username" class="form-label">Username *</label>
-                            <input type="text" class="form-control" id="username" name="username" 
-                                   value="<?= sanitize($_POST['username'] ?? '') ?>" required>
+                            <input type="text" class="form-control" id="username" name="username"
+                                value="<?= sanitize($_POST['username'] ?? '') ?>" required>
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label for="email" class="form-label">Email Address *</label>
-                        <input type="email" class="form-control" id="email" name="email" 
-                               value="<?= sanitize($_POST['email'] ?? '') ?>" required>
+                        <input type="email" class="form-control" id="email" name="email"
+                            value="<?= sanitize($_POST['email'] ?? '') ?>" required>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="phone" class="form-label">Phone Number</label>
-                            <input type="tel" class="form-control" id="phone" name="phone" 
-                                   value="<?= sanitize($_POST['phone'] ?? '') ?>">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="role" class="form-label">I am a *</label>
-                            <select class="form-select" id="role" name="role" required>
-                                <option value="student" <?= ($_POST['role'] ?? '') === 'student' ? 'selected' : '' ?>>Student</option>
-                                <option value="staff" <?= ($_POST['role'] ?? '') === 'staff' ? 'selected' : '' ?>>Staff</option>
-                            </select>
-                        </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" id="phone" name="phone"
+                            value="<?= sanitize($_POST['phone'] ?? '') ?>">
                     </div>
 
                     <div class="row">
@@ -113,7 +108,8 @@ require_once 'includes/header.php';
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="confirm_password" class="form-label">Confirm Password *</label>
-                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                                required>
                         </div>
                     </div>
 
@@ -130,7 +126,7 @@ require_once 'includes/header.php';
                 </form>
 
                 <div class="text-center">
-                    <p class="mb-0">Already have an account? 
+                    <p class="mb-0">Already have an account?
                         <a href="login.php" class="text-decoration-none">Login here</a>
                     </p>
                 </div>

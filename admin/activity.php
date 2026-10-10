@@ -9,6 +9,7 @@ $database = new Database();
 $conn = $database->getConnection();
 
 $pageTitle = "Activity Log";
+$isAdminPage = true;
 require_once __DIR__ . '/../includes/header.php';
 ?>
 

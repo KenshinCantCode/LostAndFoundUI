@@ -96,15 +96,19 @@ require_once 'includes/header.php';
                     <div class="row">
                         <!-- Avatar -->
                         <div class="col-md-4 text-center mb-4">
-                            <div class="mb-3">
-                                <?php if ($user['avatar'] !== 'default.png'): ?>
-                                <img src="<?= SITE_URL ?>/uploads/avatars/<?= $user['avatar'] ?>" 
-                                     class="rounded-circle" width="150" height="150" style="object-fit:cover;">
-                                <?php else: ?>
-                                <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style="width:150px;height:150px;">
-                                    <i class="fas fa-user fa-5x text-muted"></i>
+                            <div class="profile-avatar-preview mb-3">
+                                <div class="profile-avatar-current">
+                                    <?php if ($user['avatar'] !== 'default.png'): ?>
+                                    <img src="<?= SITE_URL ?>/uploads/avatars/<?= $user['avatar'] ?>" 
+                                         class="rounded-circle" width="150" height="150" style="object-fit:cover;">
+                                    <?php else: ?>
+                                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style="width:150px;height:150px;">
+                                        <i class="fas fa-user fa-5x text-muted"></i>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
-                                <?php endif; ?>
+                                <img id="avatarPreview" class="rounded-circle" width="150" height="150"
+                                     alt="Selected profile photo preview" style="display:none;object-fit:cover;">
                             </div>
                             <div>
                                 <label for="avatar" class="btn btn-outline-primary btn-sm">

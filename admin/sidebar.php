@@ -1,4 +1,5 @@
 <div class="card shadow-sm">
+    <?php $pendingReportCount = (int) $conn->query("SELECT COUNT(*) FROM items WHERE approval_status = 'pending'")->fetchColumn(); ?>
     <div class="card-header bg-dark text-white">
         <h6 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Admin Panel</h6>
     </div>
@@ -11,6 +12,7 @@
         </a>
         <a href="<?= SITE_URL ?>/admin/reports.php" class="list-group-item list-group-item-action <?= basename($_SERVER['PHP_SELF']) === 'reports.php' ? 'active' : '' ?>">
             <i class="fas fa-list me-2"></i>Reports
+            <?php if ($pendingReportCount > 0): ?><span class="badge bg-warning text-dark float-end"><?= $pendingReportCount ?></span><?php endif; ?>
         </a>
         <a href="<?= SITE_URL ?>/admin/claims.php" class="list-group-item list-group-item-action <?= basename($_SERVER['PHP_SELF']) === 'claims.php' ? 'active' : '' ?>">
             <i class="fas fa-hand-paper me-2"></i>Claims

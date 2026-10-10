@@ -18,7 +18,7 @@ $conn = $database->getConnection();
 $query = "SELECT i.id, i.title, i.type, i.location, i.date_occurred, i.image, c.name as category_name
           FROM items i 
           LEFT JOIN categories c ON i.category_id = c.id
-          WHERE i.is_resolved = 0";
+          WHERE i.is_resolved = 0 AND i.approval_status = 'approved'";
 $params = [];
 
 if (!empty($search)) {
@@ -34,11 +34,16 @@ if ($type !== 'all' && in_array($type, ['lost', 'found'])) {
     $params[] = $type;
 }
 
+$limit = min(max($limit, 1), 50);
 $query .= " ORDER BY i.created_at DESC LIMIT ?";
-$params[] = min($limit, 50);
+$params[] = $limit;
 
 $stmt = $conn->prepare($query);
-$stmt->execute($params);
+foreach ($params as $key => $value) {
+    $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+    $stmt->bindValue($key + 1, $value, $type);
+}
+$stmt->execute();
 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 echo json_encode([

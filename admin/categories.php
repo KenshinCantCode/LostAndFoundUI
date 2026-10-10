@@ -70,6 +70,7 @@ if (isset($_GET['edit'])) {
 }
 
 $pageTitle = "Manage Categories";
+$isAdminPage = true;
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
