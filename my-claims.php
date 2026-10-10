@@ -45,12 +45,12 @@ require_once 'includes/header.php';
 <!-- Tabs -->
 <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
-        <a class="nav-link active" data-bs-toggle="tab" href="#myClaims">
+        <a class="nav-link active" data-ui-toggle="tab" href="#myClaims">
             Claims I Made (<?= count($my_claims) ?>)
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" data-bs-toggle="tab" href="#claimsOnMyItems">
+        <a class="nav-link" data-ui-toggle="tab" href="#claimsOnMyItems">
             Claims on My Items (<?= count($claims_on_my_items) ?>)
         </a>
     </li>

@@ -37,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (empty($error)) {
             $stmt = $conn->prepare("
-                INSERT INTO items (user_id, category_id, title, description, type, location, building, date_occurred, image, status)
-                VALUES (?, ?, ?, ?, 'found', ?, ?, ?, ?, 'open')
+                INSERT INTO items (user_id, category_id, title, description, type, location, building, date_occurred, image, status, approval_status)
+                VALUES (?, ?, ?, ?, 'found', ?, ?, ?, ?, 'open', 'pending')
             ");
             $stmt->execute([
                 $_SESSION['user_id'],
@@ -55,11 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             logActivity($_SESSION['user_id'], 'report_found', "Reported found item: $title");
 
-            include 'includes/matching.php';
-            checkAndNotifyMatches($item_id, 'found');
-
-            setFlash('success', 'Found item reported successfully! We will notify you if someone claims it.');
-            redirect(SITE_URL . '/item.php?id=' . $item_id);
+            setFlash('success', 'Your found-item report was submitted for admin review. It will appear publicly after approval.');
+            redirect(SITE_URL . '/my-reports.php');
         }
     }
 }

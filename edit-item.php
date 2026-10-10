@@ -33,14 +33,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $location = sanitize($_POST['location'] ?? '');
     $building = sanitize($_POST['building'] ?? '');
     $date_occurred = $_POST['date_occurred'] ?? '';
-    $status = sanitize($_POST['status'] ?? 'open');
-
+    $status = sanitize($_POST['status'] ?? $item['status']);
     if (empty($title)) {
         $error = 'Please enter an item title';
     } elseif (empty($location)) {
         $error = 'Please enter the location';
     } elseif (empty($date_occurred)) {
         $error = 'Please enter the date';
+    } elseif (!in_array($status, ['open', 'closed', 'returned'], true)) {
+        $error = 'Invalid report status';
     } else {
         $image = $item['image'];
         if (isset($_FILES['image']) && $_FILES['image']['error'] === 0) {
@@ -68,7 +69,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     building = ?,
                     date_occurred = ?,
                     image = ?,
-                    status = ?
+                    status = ?,
+                    approval_status = 'pending',
+                    approval_reviewed_at = NULL,
+                    approval_reviewed_by = NULL
                 WHERE id = ? AND user_id = ?
             ");
             $stmt->execute([
@@ -85,8 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             logActivity($_SESSION['user_id'], 'edit_item', "Edited item: $title");
-            setFlash('success', 'Item updated successfully!');
-            redirect(SITE_URL . '/item.php?id=' . $item_id);
+            setFlash('success', 'Your changes were submitted for admin review. The report will be visible again after approval.');
+            redirect(SITE_URL . '/my-reports.php');
         }
     }
 }

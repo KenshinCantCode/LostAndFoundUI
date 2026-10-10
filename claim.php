@@ -21,6 +21,11 @@ if (!$item) {
     redirect(SITE_URL . '/search.php');
 }
 
+if ($item['approval_status'] !== 'approved') {
+    setFlash('warning', 'This report is not available for claims until it has been approved.');
+    redirect(SITE_URL . '/search.php');
+}
+
 // Check if user is the owner
 if ($item['user_id'] == $_SESSION['user_id']) {
     setFlash('warning', 'You cannot claim your own item');
@@ -108,12 +113,13 @@ require_once 'includes/header.php';
                         <div class="row">
                             <div class="col-md-3">
                                 <?php if ($item['image']): ?>
-                                <img src="<?= SITE_URL ?>/uploads/items/<?= $item['image'] ?>" 
-                                     class="img-fluid rounded" alt="<?= sanitize($item['title']) ?>">
+                                    <img src="<?= SITE_URL ?>/uploads/items/<?= $item['image'] ?>" class="img-fluid rounded"
+                                        alt="<?= sanitize($item['title']) ?>">
                                 <?php else: ?>
-                                <div class="bg-white rounded d-flex align-items-center justify-content-center" style="height:100px;">
-                                    <i class="fas <?= $item['category_icon'] ?? 'fa-tag' ?> fa-3x text-muted"></i>
-                                </div>
+                                    <div class="bg-white rounded d-flex align-items-center justify-content-center"
+                                        style="height:100px;">
+                                        <i class="fas <?= $item['category_icon'] ?? 'fa-tag' ?> fa-3x text-muted"></i>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                             <div class="col-md-9">
@@ -127,26 +133,27 @@ require_once 'includes/header.php';
                 </div>
 
                 <?php if ($error): ?>
-                <div class="alert alert-danger"><?= $error ?></div>
+                    <div class="alert alert-danger"><?= $error ?></div>
                 <?php endif; ?>
 
                 <form method="POST">
                     <div class="mb-3">
                         <label for="message" class="form-label">Why is this your item? *</label>
                         <textarea class="form-control" id="message" name="message" rows="4" required
-                                  placeholder="Explain why you believe this is your item. Include details that match your lost item report."></textarea>
+                            placeholder="Explain why you believe this is your item. Include details that match your lost item report."></textarea>
                     </div>
 
                     <div class="mb-3">
                         <label for="proof_description" class="form-label">Proof of Ownership *</label>
                         <textarea class="form-control" id="proof_description" name="proof_description" rows="4" required
-                                  placeholder="Provide details that only the owner would know (e.g., contents of wallet, scratches on phone, etc.). DO NOT include sensitive info like PINs or passwords."></textarea>
+                            placeholder="Provide details that only the owner would know (e.g., contents of wallet, scratches on phone, etc.). DO NOT include sensitive info like PINs or passwords."></textarea>
                         <small class="text-muted">This helps verify you are the rightful owner.</small>
                     </div>
 
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Important:</strong> By submitting this claim, you agree to meet with the item owner or campus security to verify ownership and retrieve the item.
+                        <strong>Important:</strong> By submitting this claim, you agree to meet with the item owner or
+                        campus security to verify ownership and retrieve the item.
                     </div>
 
                     <div class="d-flex gap-2">

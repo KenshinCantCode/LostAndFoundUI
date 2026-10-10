@@ -96,6 +96,7 @@ require_once 'includes/header.php';
                         <th>Location</th>
                         <th>Date</th>
                         <th>Status</th>
+                        <th>Review</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -128,6 +129,11 @@ require_once 'includes/header.php';
                         <td>
                             <span class="badge bg-<?= $item['status'] === 'open' ? 'warning' : ($item['status'] === 'returned' ? 'success' : ($item['status'] === 'claimed' ? 'info' : 'secondary')) ?>">
                                 <?= ucfirst($item['status']) ?>
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-<?= $item['approval_status'] === 'approved' ? 'success' : ($item['approval_status'] === 'rejected' ? 'danger' : 'warning') ?>">
+                                <?= ucfirst($item['approval_status']) ?>
                             </span>
                         </td>
                         <td>

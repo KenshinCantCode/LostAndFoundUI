@@ -14,7 +14,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($item_id > 0) {
+        if (in_array($action, ['approve', 'reject'], true)) {
+            $csrfToken = $_POST['csrf_token'] ?? '';
+            if (!is_string($csrfToken) || !verifyCSRFToken($csrfToken)) {
+                setFlash('danger', 'Your session expired. Refresh the page and try again.');
+                redirect(SITE_URL . '/admin/reports.php');
+            }
+        }
         switch ($action) {
+            case 'approve':
+            case 'reject':
+                $approvalStatus = $action === 'approve' ? 'approved' : 'rejected';
+                $stmt = $conn->prepare("
+                    UPDATE items
+                    SET approval_status = ?, approval_reviewed_at = NOW(), approval_reviewed_by = ?
+                    WHERE id = ? AND approval_status = 'pending'
+                ");
+                $stmt->execute([$approvalStatus, $_SESSION['user_id'], $item_id]);
+                if ($stmt->rowCount() === 1) {
+                    $stmt = $conn->prepare('SELECT user_id, title, type FROM items WHERE id = ?');
+                    $stmt->execute([$item_id]);
+                    $reviewedItem = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($action === 'approve') {
+                        createNotification(
+                            $reviewedItem['user_id'],
+                            'Report approved',
+                            "Your {$reviewedItem['type']} report, '{$reviewedItem['title']}', is now visible.",
+                            'admin',
+                            SITE_URL . '/item.php?id=' . $item_id
+                        );
+                        require_once __DIR__ . '/../includes/matching.php';
+                        checkAndNotifyMatches($item_id, $reviewedItem['type']);
+                        setFlash('success', 'Report approved and published.');
+                    } else {
+                        createNotification(
+                            $reviewedItem['user_id'],
+                            'Report not approved',
+                            "Your {$reviewedItem['type']} report, '{$reviewedItem['title']}', was not approved. You can edit it and submit it for review again.",
+                            'admin',
+                            SITE_URL . '/my-reports.php'
+                        );
+                        setFlash('success', 'Report rejected. It remains visible only to its owner and admins.');
+                    }
+                } else {
+                    setFlash('warning', 'This report is no longer awaiting review.');
+                }
+                break;
             case 'delete':
                 $stmt = $conn->prepare("SELECT image, title FROM items WHERE id = ?");
                 $stmt->execute([$item_id]);
@@ -52,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $type_filter = $_GET['type'] ?? 'all';
 $status_filter = $_GET['status'] ?? 'all';
+$approval_filter = $_GET['approval'] ?? 'all';
 $search = sanitize($_GET['q'] ?? '');
 
 $query = "SELECT i.*, u.username, c.name as category_name, 
@@ -72,6 +118,11 @@ if ($status_filter !== 'all') {
     $params[] = $status_filter;
 }
 
+if (in_array($approval_filter, ['pending', 'approved', 'rejected'], true)) {
+    $query .= " AND i.approval_status = ?";
+    $params[] = $approval_filter;
+}
+
 if (!empty($search)) {
     $query .= " AND (i.title LIKE ? OR i.location LIKE ?)";
     $search_param = "%$search%";
@@ -86,6 +137,7 @@ $stmt->execute($params);
 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $pageTitle = "Manage Reports";
+$isAdminPage = true;
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -122,6 +174,14 @@ require_once __DIR__ . '/../includes/header.php';
                         </select>
                     </div>
                     <div class="col-md-3">
+                        <select name="approval" class="form-select">
+                            <option value="all" <?= $approval_filter === 'all' ? 'selected' : '' ?>>All Review States</option>
+                            <option value="pending" <?= $approval_filter === 'pending' ? 'selected' : '' ?>>Pending Review</option>
+                            <option value="approved" <?= $approval_filter === 'approved' ? 'selected' : '' ?>>Approved</option>
+                            <option value="rejected" <?= $approval_filter === 'rejected' ? 'selected' : '' ?>>Rejected</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <input type="text" name="q" class="form-control" placeholder="Search..." value="<?= sanitize($search) ?>">
                     </div>
                     <div class="col-md-3">
@@ -144,6 +204,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <th>Reported By</th>
                                 <th>Claims</th>
                                 <th>Status</th>
+                                <th>Review</th>
                                 <th>Date</th>
                                 <th>Actions</th>
                             </tr>
@@ -179,15 +240,37 @@ require_once __DIR__ . '/../includes/header.php';
                                         <?= ucfirst($item['status']) ?>
                                     </span>
                                 </td>
+                                <td>
+                                    <span class="badge bg-<?= $item['approval_status'] === 'approved' ? 'success' : ($item['approval_status'] === 'rejected' ? 'danger' : 'warning') ?>">
+                                        <?= ucfirst($item['approval_status']) ?>
+                                    </span>
+                                </td>
                                 <td><?= formatDate($item['created_at']) ?></td>
                                 <td>
                                     <div class="dropdown">
-                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-ui-toggle="dropdown">
                                             Actions
                                         </button>
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="../item.php?id=<?= $item['id'] ?>"><i class="fas fa-eye me-2"></i>View</a></li>
                                             <li><hr class="dropdown-divider"></li>
+                                            <?php if ($item['approval_status'] === 'pending'): ?>
+                                            <li>
+                                                <form method="POST">
+                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generateCSRFToken(), ENT_QUOTES, 'UTF-8') ?>">
+                                                    <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
+                                                    <button type="submit" name="action" value="approve" class="dropdown-item text-success"><i class="fas fa-check me-2"></i>Approve and publish</button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form method="POST" onsubmit="return confirm('Reject this report? The owner can edit and resubmit it.')">
+                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generateCSRFToken(), ENT_QUOTES, 'UTF-8') ?>">
+                                                    <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
+                                                    <button type="submit" name="action" value="reject" class="dropdown-item text-danger"><i class="fas fa-times me-2"></i>Reject report</button>
+                                                </form>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <?php endif; ?>
                                             <?php if ($item['status'] !== 'returned'): ?>
                                             <li>
                                                 <form method="POST" onsubmit="return confirm('Mark this item as returned?')">

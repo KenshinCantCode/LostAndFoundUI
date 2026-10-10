@@ -18,7 +18,6 @@ if (!$item_id) {
     redirect(SITE_URL . '/my-reports.php');
 }
 
-// Get item
 $stmt = $conn->prepare("SELECT * FROM items WHERE id = ? AND user_id = ?");
 $stmt->execute([$item_id, $_SESSION['user_id']]);
 $item = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -28,7 +27,7 @@ if (!$item) {
     redirect(SITE_URL . '/my-reports.php');
 }
 
-// Delete image
+
 if ($item['image']) {
     $image_path = ITEMS_UPLOAD . $item['image'];
     if (file_exists($image_path)) {
@@ -36,7 +35,6 @@ if ($item['image']) {
     }
 }
 
-// Delete related records
 $conn->prepare("DELETE FROM matches WHERE lost_item_id = ? OR found_item_id = ?")->execute([$item_id, $item_id]);
 $conn->prepare("DELETE FROM claims WHERE item_id = ?")->execute([$item_id]);
 $conn->prepare("DELETE FROM items WHERE id = ?")->execute([$item_id]);

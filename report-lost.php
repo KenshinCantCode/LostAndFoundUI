@@ -40,8 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (empty($error)) {
             $stmt = $conn->prepare("
-                INSERT INTO items (user_id, category_id, title, description, type, location, building, date_occurred, image, status)
-                VALUES (?, ?, ?, ?, 'lost', ?, ?, ?, ?, 'open')
+                INSERT INTO items (user_id, category_id, title, description, type, location, building, date_occurred, image, status, approval_status)
+                VALUES (?, ?, ?, ?, 'lost', ?, ?, ?, ?, 'open', 'pending')
             ");
             $stmt->execute([
                 $_SESSION['user_id'],
@@ -56,15 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $item_id = $conn->lastInsertId();
 
-            // Log activity
             logActivity($_SESSION['user_id'], 'report_lost', "Reported lost item: $title");
 
-            // Check for matches
-            include 'includes/matching.php';
-            checkAndNotifyMatches($item_id, 'lost');
-
-            setFlash('success', 'Lost item reported successfully! We will notify you if a match is found.');
-            redirect(SITE_URL . '/item.php?id=' . $item_id);
+            setFlash('success', 'Your lost-item report was submitted for admin review. It will appear publicly after approval.');
+            redirect(SITE_URL . '/my-reports.php');
         }
     }
 }
@@ -141,7 +136,7 @@ require_once 'includes/header.php';
                         </div>
                     </div>
 
-                    <!-- Image Preview -->
+
                     <div class="mb-3" id="imagePreview" style="display:none;">
                         <img id="previewImg" src="" alt="Preview" class="img-thumbnail" style="max-height:200px;">
                     </div>

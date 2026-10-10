@@ -13,7 +13,7 @@ function findMatches($item_id, $type) {
     $stmt->execute([$item_id]);
     $item = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    if (!$item) return [];
+    if (!$item || $item['approval_status'] !== 'approved') return [];
     
     // Build matching query based on multiple criteria
     $query = "SELECT i.*, 
@@ -41,6 +41,7 @@ function findMatches($item_id, $type) {
               LEFT JOIN categories c ON i.category_id = c.id
               WHERE i.type = :opposite_type
               AND i.status = 'open'
+              AND i.approval_status = 'approved'
               AND i.id != :item_id
               HAVING similarity_score > 30
               ORDER BY similarity_score DESC

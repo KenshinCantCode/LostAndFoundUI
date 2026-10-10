@@ -9,6 +9,7 @@ $database = new Database();
 $conn = $database->getConnection();
 
 $pageTitle = "Admin Dashboard";
+$isAdminPage = true;
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -75,6 +76,21 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="<?= SITE_URL ?>/admin/reports.php?approval=pending" class="text-decoration-none">
+                    <div class="card bg-warning text-dark h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">Reports to Review</h6>
+                                    <h3 class="mb-0"><?= $conn->query("SELECT COUNT(*) FROM items WHERE approval_status = 'pending'")->fetchColumn() ?></h3>
+                                </div>
+                                <i class="fas fa-clipboard-check fa-2x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </a>
             </div>
         </div>
 

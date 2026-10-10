@@ -74,6 +74,7 @@ $stmt->execute($params);
 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $pageTitle = "Manage Users";
+$isAdminPage = true;
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -161,7 +162,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <td><?= formatDate($user['created_at']) ?></td>
                                 <td>
                                     <div class="dropdown">
-                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-ui-toggle="dropdown">
                                             Actions
                                         </button>
                                         <ul class="dropdown-menu">
@@ -182,6 +183,15 @@ require_once __DIR__ . '/../includes/header.php';
                                                     <?php if ($user['role'] !== 'admin'): ?>
                                                     <button type="submit" name="action" value="make_admin" class="dropdown-item text-danger">
                                                         <i class="fas fa-shield-alt me-2"></i>Make Admin
+                                                    </button>
+                                                    <?php endif; ?>
+                                                    <?php if ($user['role'] === 'student'): ?>
+                                                    <button type="submit" name="action" value="make_staff" class="dropdown-item">
+                                                        <i class="fas fa-chalkboard-teacher me-2"></i>Make Teacher/Staff
+                                                    </button>
+                                                    <?php elseif ($user['role'] === 'staff'): ?>
+                                                    <button type="submit" name="action" value="make_student" class="dropdown-item">
+                                                        <i class="fas fa-user-graduate me-2"></i>Change to Student
                                                     </button>
                                                     <?php endif; ?>
                                                     <button type="submit" name="action" value="delete" class="dropdown-item text-danger" 

@@ -9,7 +9,6 @@ $database = new Database();
 $conn = $database->getConnection();
 $user_id = $_SESSION['user_id'];
 
-// Get user stats
 $stats = [];
 $stats['my_lost'] = $conn->prepare("SELECT COUNT(*) FROM items WHERE user_id = ? AND type = 'lost'");
 $stats['my_lost']->execute([$user_id]);
@@ -73,56 +72,56 @@ require_once 'includes/header.php';
 <!-- Stats Cards -->
 <div class="row g-4 mb-4">
     <div class="col-6 col-lg-3">
-        <div class="card bg-danger text-white h-100">
+        <div class="card stat-card bg-danger text-white h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
                         <h6 class="mb-0">Lost Items</h6>
                         <h2 class="mb-0"><?= $stats['my_lost'] ?></h2>
                     </div>
-                    <i class="fas fa-frown fa-2x opacity-50"></i>
+                    <i class="stat-icon fas fa-frown fa-2x opacity-50"></i>
                 </div>
                 <a href="my-reports.php?type=lost" class="text-white small">View All <i class="fas fa-arrow-right"></i></a>
             </div>
         </div>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="card bg-success text-white h-100">
+        <div class="card stat-card bg-success text-white h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
                         <h6 class="mb-0">Found Items</h6>
                         <h2 class="mb-0"><?= $stats['my_found'] ?></h2>
                     </div>
-                    <i class="fas fa-smile fa-2x opacity-50"></i>
+                    <i class="stat-icon fas fa-smile fa-2x opacity-50"></i>
                 </div>
                 <a href="my-reports.php?type=found" class="text-white small">View All <i class="fas fa-arrow-right"></i></a>
             </div>
         </div>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="card bg-info text-white h-100">
+        <div class="card stat-card bg-info text-white h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
                         <h6 class="mb-0">Claims Made</h6>
                         <h2 class="mb-0"><?= $stats['my_claims'] ?></h2>
                     </div>
-                    <i class="fas fa-hand-paper fa-2x opacity-50"></i>
+                    <i class="stat-icon fas fa-hand-paper fa-2x opacity-50"></i>
                 </div>
                 <a href="my-claims.php" class="text-white small">View All <i class="fas fa-arrow-right"></i></a>
             </div>
         </div>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="card bg-primary text-white h-100">
+        <div class="card stat-card bg-primary text-white h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
                         <h6 class="mb-0">Returned</h6>
                         <h2 class="mb-0"><?= $stats['returned'] ?></h2>
                     </div>
-                    <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                    <i class="stat-icon fas fa-check-circle fa-2x opacity-50"></i>
                 </div>
             </div>
         </div>
@@ -171,6 +170,7 @@ require_once 'includes/header.php';
                                 <th>Item</th>
                                 <th>Type</th>
                                 <th>Status</th>
+                                <th>Review</th>
                                 <th>Date</th>
                                 <th>Action</th>
                             </tr>
@@ -187,6 +187,11 @@ require_once 'includes/header.php';
                                 <td>
                                     <span class="badge bg-<?= $report['status'] === 'open' ? 'warning' : ($report['status'] === 'returned' ? 'success' : 'secondary') ?>">
                                         <?= ucfirst($report['status']) ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-<?= $report['approval_status'] === 'approved' ? 'success' : ($report['approval_status'] === 'rejected' ? 'danger' : 'warning') ?>">
+                                        <?= ucfirst($report['approval_status']) ?>
                                     </span>
                                 </td>
                                 <td><?= formatDate($report['created_at']) ?></td>

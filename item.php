@@ -20,6 +20,72 @@ if (!$item) {
     redirect(SITE_URL . '/search.php');
 }
 
+if ($item['approval_status'] !== 'approved'
+    && (!$auth->isLoggedIn()
+        || ((int) $item['user_id'] !== (int) $_SESSION['user_id'] && !$auth->isAdmin()))) {
+    http_response_code(404);
+    $pageTitle = 'Item Not Found';
+    require_once __DIR__ . '/includes/header.php';
+    echo '<div class="rounded-xl border border-slate-200 bg-white p-8 text-center"><h1 class="text-2xl font-bold">Item not found</h1><p class="mt-2 text-slate-600">This item is unavailable.</p></div>';
+    require_once __DIR__ . '/includes/footer.php';
+    exit;
+}
+
+$conn->exec("CREATE TABLE IF NOT EXISTS comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    item_id INT NOT NULL,
+    user_id INT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+)");
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['action'] ?? '', ['add_comment', 'edit_comment', 'delete_comment'])) {
+    $auth->requireLogin();
+    $comment_action = $_POST['action'];
+    $comment_id = intval($_POST['comment_id'] ?? 0);
+
+    if ($comment_action === 'delete_comment') {
+        $stmt = $conn->prepare("DELETE FROM comments WHERE id = ? AND item_id = ? AND user_id = ?");
+        $stmt->execute([$comment_id, $item_id, $_SESSION['user_id']]);
+        setFlash($stmt->rowCount() ? 'success' : 'danger', $stmt->rowCount() ? 'Comment deleted.' : 'You cannot delete this comment.');
+        redirect(SITE_URL . '/item.php?id=' . $item_id . '#comments');
+    }
+
+    $content = trim($_POST['content'] ?? '');
+
+    if ($content === '') {
+        setFlash('danger', 'Comment cannot be empty.');
+    } elseif ($comment_action === 'edit_comment') {
+        $stmt = $conn->prepare("UPDATE comments SET content = ? WHERE id = ? AND item_id = ? AND user_id = ?");
+        $stmt->execute([$content, $comment_id, $item_id, $_SESSION['user_id']]);
+        setFlash($stmt->rowCount() ? 'success' : 'danger', $stmt->rowCount() ? 'Comment updated.' : 'You cannot edit this comment.');
+    } else {
+        $stmt = $conn->prepare("INSERT INTO comments (item_id, user_id, content) VALUES (?, ?, ?)");
+        $stmt->execute([$item_id, $_SESSION['user_id'], $content]);
+
+        preg_match_all('/@([A-Za-z0-9_]{1,50})/', $content, $matches);
+        $mentioned = array_unique($matches[1]);
+        $user_stmt = $conn->prepare("SELECT id FROM users WHERE username = ? AND is_active = 1");
+        foreach ($mentioned as $username) {
+            $user_stmt->execute([$username]);
+            $mentioned_user_id = $user_stmt->fetchColumn();
+            if ($mentioned_user_id && (int) $mentioned_user_id !== (int) $_SESSION['user_id']) {
+                createNotification(
+                    $mentioned_user_id,
+                    'You were mentioned in a comment',
+                    $_SESSION['username'] . " mentioned you on '{$item['title']}'.",
+                    'system',
+                    SITE_URL . '/item.php?id=' . $item_id
+                );
+            }
+        }
+        setFlash('success', 'Comment posted.');
+    }
+    redirect(SITE_URL . '/item.php?id=' . $item_id . '#comments');
+}
+
 // Increment views
 $conn->prepare("UPDATE items SET views = views + 1 WHERE id = ?")->execute([$item_id]);
 
@@ -34,13 +100,18 @@ $stmt = $conn->prepare("
 $stmt->execute([$item_id]);
 $claims = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+$stmt = $conn->prepare("SELECT c.*, u.username, u.full_name FROM comments c JOIN users u ON c.user_id = u.id WHERE c.item_id = ? ORDER BY c.created_at DESC");
+$stmt->execute([$item_id]);
+$comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$edit_comment_id = intval($_GET['edit_comment'] ?? 0);
+
 // Find similar items
 $opposite_type = $item['type'] === 'lost' ? 'found' : 'lost';
 $stmt = $conn->prepare("
     SELECT i.*, c.name as category_name
     FROM items i
     LEFT JOIN categories c ON i.category_id = c.id
-    WHERE i.type = ? AND i.status = 'open' AND i.id != ? AND i.category_id = ?
+    WHERE i.type = ? AND i.status = 'open' AND i.approval_status = 'approved' AND i.id != ? AND i.category_id = ?
     ORDER BY ABS(DATEDIFF(i.date_occurred, ?)) ASC
     LIMIT 3
 ");
@@ -52,6 +123,20 @@ require_once 'includes/header.php';
 ?>
 
 <div class="row">
+    <?php if ($item['approval_status'] !== 'approved'): ?>
+    <div class="col-12 mb-3">
+        <div class="alert <?= $item['approval_status'] === 'rejected' ? 'alert-danger' : 'alert-warning' ?>">
+            <?php if ($item['approval_status'] === 'pending'): ?>
+                This report is waiting for admin approval and is not visible to other users.
+            <?php else: ?>
+                This report was not approved and is visible only to you and admins. You can edit it and submit it for review again.
+                <?php if ((int) $item['user_id'] === (int) ($_SESSION['user_id'] ?? 0) && $item['status'] === 'open'): ?>
+                    <a class="alert-link" href="<?= SITE_URL ?>/edit-item.php?id=<?= (int) $item['id'] ?>">Edit report</a>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
     <div class="col-lg-8">
         <div class="card shadow mb-4">
             <?php if ($item['image']): ?>
@@ -65,17 +150,18 @@ require_once 'includes/header.php';
             <?php endif; ?>
 
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <span class="badge <?= $item['type'] === 'lost' ? 'bg-danger' : 'bg-success' ?> mb-2 fs-6">
+                <div class="item-detail-heading mb-4">
+                    <div class="item-detail-badges">
+                        <span class="badge <?= $item['type'] === 'lost' ? 'bg-danger' : 'bg-success' ?>">
                             <i class="fas <?= $item['type'] === 'lost' ? 'fa-frown' : 'fa-smile' ?> me-1"></i>
                             <?= ucfirst($item['type']) ?> Item
                         </span>
-                        <h2 class="mb-0"><?= sanitize($item['title']) ?></h2>
+                        <span class="item-status-badge item-status-<?= sanitize($item['status']) ?>">
+                            <span class="item-status-dot" aria-hidden="true"></span>
+                            <?= ucfirst($item['status']) ?>
+                        </span>
                     </div>
-                    <span class="badge bg-<?= $item['status'] === 'open' ? 'warning' : ($item['status'] === 'returned' ? 'success' : 'secondary') ?> fs-6">
-                        <?= ucfirst($item['status']) ?>
-                    </span>
+                    <h2 class="mb-0"><?= sanitize($item['title']) ?></h2>
                 </div>
 
                 <div class="row mb-4">
@@ -144,6 +230,74 @@ require_once 'includes/header.php';
 
     <!-- Sidebar -->
     <div class="col-lg-4">
+        <div class="card shadow mb-4" id="comments">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-comments me-2"></i>Comments (<?= count($comments) ?>)</h5>
+            </div>
+            <div class="card-body">
+                <?php if ($auth->isLoggedIn()): ?>
+                <form method="POST" class="mb-4">
+                    <input type="hidden" name="action" value="add_comment">
+                    <textarea name="content" class="form-control mb-2" rows="3" maxlength="1000" placeholder="Write a comment or mention @username..." required></textarea>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-paper-plane me-1"></i>Post Comment</button>
+                </form>
+                <?php else: ?>
+                <p class="text-muted small">Log in to join the conversation.</p>
+                <?php endif; ?>
+
+                <?php if (empty($comments)): ?>
+                <p class="text-muted text-center mb-0">Be the first to comment.</p>
+                <?php else: ?>
+                    <?php foreach ($comments as $comment): ?>
+                    <div class="border-top pt-3 mb-3">
+                        <div class="comment-heading">
+                            <div>
+                                <strong><?= sanitize($comment['full_name'] ?: $comment['username']) ?></strong>
+                                <small class="text-muted"><?= timeAgo($comment['created_at']) ?></small>
+                            </div>
+                            <?php if ($auth->isLoggedIn() && $_SESSION['user_id'] == $comment['user_id']): ?>
+                            <div class="dropdown comment-actions">
+                                <button type="button" class="comment-menu-toggle" data-ui-toggle="dropdown" aria-label="Comment options" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-vertical" aria-hidden="true"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <?php if ($edit_comment_id !== (int) $comment['id']): ?>
+                                    <li>
+                                        <a href="item.php?id=<?= $item_id ?>&edit_comment=<?= $comment['id'] ?>#comments" class="dropdown-item">
+                                            <i class="fas fa-pen me-2" aria-hidden="true"></i>Edit comment
+                                        </a>
+                                    </li>
+                                    <?php endif; ?>
+                                    <li>
+                                        <form method="POST" onsubmit="return confirm('Delete this comment?')">
+                                            <input type="hidden" name="action" value="delete_comment">
+                                            <input type="hidden" name="comment_id" value="<?= $comment['id'] ?>">
+                                            <button type="submit" class="dropdown-item text-danger">
+                                                <i class="fas fa-trash me-2" aria-hidden="true"></i>Delete comment
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($edit_comment_id === (int) $comment['id'] && $auth->isLoggedIn() && $_SESSION['user_id'] == $comment['user_id']): ?>
+                        <form method="POST" class="mt-2">
+                            <input type="hidden" name="action" value="edit_comment">
+                            <input type="hidden" name="comment_id" value="<?= $comment['id'] ?>">
+                            <textarea name="content" class="form-control mb-2" rows="3" maxlength="1000" required><?= sanitize($comment['content']) ?></textarea>
+                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                            <a href="item.php?id=<?= $item_id ?>#comments" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                        </form>
+                        <?php else: ?>
+                        <p class="mb-1 mt-1" style="white-space:pre-wrap;"><?= sanitize($comment['content']) ?></p>
+                        <?php endif; ?>
+                    </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+
         <!-- Action Card -->
         <div class="card shadow mb-4">
             <div class="card-body">
@@ -159,7 +313,7 @@ require_once 'includes/header.php';
                         <a href="edit-item.php?id=<?= $item_id ?>" class="btn btn-primary w-100 mb-2">
                             <i class="fas fa-edit me-1"></i>Edit Report
                         </a>
-                        <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <button type="button" class="btn btn-outline-danger w-100" data-ui-toggle="modal" data-ui-target="#deleteModal">
                             <i class="fas fa-trash me-1"></i>Delete Report
                         </button>
                         <?php endif; ?>
@@ -171,11 +325,9 @@ require_once 'includes/header.php';
                 <?php endif; ?>
 
                 <hr>
-                </div>
             </div>
         </div>
 
-        <!-- Similar Items -->
         <?php if (!empty($similar_items)): ?>
         <div class="card shadow">
             <div class="card-header bg-white">
@@ -206,13 +358,13 @@ require_once 'includes/header.php';
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Delete Report</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-ui-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to delete this report? This action cannot be undone.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-ui-dismiss="modal">Cancel</button>
                 <form method="POST" action="delete-item.php" class="d-inline">
                     <input type="hidden" name="item_id" value="<?= $item_id ?>">
                     <button type="submit" class="btn btn-danger">Delete</button>

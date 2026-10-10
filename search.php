@@ -6,7 +6,6 @@ $database = new Database();
 $conn = $database->getConnection();
 $categories = getCategories();
 
-// Get filter values
 $search = sanitize($_GET['q'] ?? '');
 $type = $_GET['type'] ?? 'all';
 $category = intval($_GET['category'] ?? 0);
@@ -15,12 +14,11 @@ $date_from = $_GET['date_from'] ?? '';
 $date_to = $_GET['date_to'] ?? '';
 $status = $_GET['status'] ?? 'open';
 
-// Build query
 $query = "SELECT i.*, c.name as category_name, c.icon as category_icon, u.full_name as reporter_name
           FROM items i 
           LEFT JOIN categories c ON i.category_id = c.id
           LEFT JOIN users u ON i.user_id = u.id
-          WHERE i.is_resolved = 0";
+          WHERE i.is_resolved = 0 AND i.approval_status = 'approved'";
 $params = [];
 
 if (!empty($search)) {
